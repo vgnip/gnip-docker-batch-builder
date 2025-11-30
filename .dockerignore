@@ -1,0 +1,43 @@
+# 忽略所有 .git 目录和文件
+.git/
+.gitignore
+
+# 忽略 node_modules（如果是源码部署）
+node_modules/
+yarn.lock
+package-lock.json
+
+# 忽略日志文件
+*.log
+logs/
+
+# 忽略环境配置文件
+.env
+.env.local
+.env.production
+
+# 忽略 IDE 配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略 macOS 系统文件
+.DS_Store
+
+# 忽略测试文件
+__tests__/
+coverage/
+
+# 忽略构建目录（如果已经在 Dockerfile 中构建）
+# dist/
+# build/
+
+# 忽略 Docker 相关文件（除了必要的）
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# 忽略 README 和文档
+README.md
+docs/
