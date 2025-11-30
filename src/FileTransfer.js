@@ -1,6 +1,5 @@
-// const client = require("scp2");
 const path = require("path");
-const { config } = require("./config");
+const { config } = require("../test/config");
 const fs = require("fs");
 const { Client } = require("ssh2");
 // 移除模块级别的 conn
@@ -205,29 +204,6 @@ class FileTransfer {
   }
 }
 
-// 使用示例
-async function start(localFolder, remoteFolder) {
-  // 每次调用都创建新的 FileTransfer 实例
-  const transfer = new FileTransfer(config);
-
-  // 传输参数
-  localFolder = localFolder || "./lib";
-  remoteFolder = remoteFolder || "/aaa";
-
-  try {
-    // 检查本地文件夹
-    transfer.checkLocalFolder(localFolder);
-
-    console.log("🚀 使用 SFTP 协议传输（带进度）...");
-    await transfer.transferWithProgress(localFolder, remoteFolder);
-  } catch (error) {
-    console.error("❌ 传输失败:", error.message);
-  } finally {
-    // 确保连接关闭
-    transfer.close();
-  }
-}
-
 // 如果直接运行此文件
 if (require.main === module) {
   start();
@@ -235,5 +211,4 @@ if (require.main === module) {
 
 module.exports = {
   FileTransfer,
-  start,
 };

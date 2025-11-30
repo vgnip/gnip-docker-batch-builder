@@ -1,65 +1,8 @@
 const { execSync, spawn } = require("child_process");
 const fs = require("fs-extra");
 const path = require("path");
-const { config } = require("./config");
+const { FileTransfer } = require("./FileTransfer");
 
-const { start, FileTransfer } = require("./FileTransfer");
-// 配置信息
-const configInfo = {
-  // 项目配置
-  projects: [
-    {
-      name: "my-vue-app",
-      gitUrl: "https://github.com/vgnip/my-vue-app",
-      nodeVersion: "22.15.0",
-      buildCommand: "npm run build",
-      outputDir: "dist",
-      remotePath: "/var/www/project1",
-    },
-    {
-      name: "my-vue-app2",
-      gitUrl: "https://github.com/vgnip/my-vue-app",
-      nodeVersion: "24.0.2",
-      buildCommand: "npm run build",
-      outputDir: "dist",
-      remotePath: "/var/www/project2",
-    },
-    {
-      name: "my-vue-app3",
-      gitUrl: "https://github.com/vgnip/my-vue-app",
-      nodeVersion: "22.15.0",
-      buildCommand: "npm run build",
-      outputDir: "dist",
-      remotePath: "/var/www/project3",
-    },
-    // {
-    //   name: "my-vue-app2",
-    //   gitUrl: "https://github.com/vgnip/my-vue-app",
-    //   nodeVersion: "22.15.0",
-    //   buildCommand: "npm run build",
-    //   outputDir: "dist",
-    //   remotePath: "/var/www/project1",
-    // },
-  ],
-
-  // 服务器配置
-  server: {
-    host: "106.54.233.233",
-    port: 22,
-    username: "root",
-    // 密码或私钥路径（二选一）
-    // password: "your-password",
-    privateKey: require("fs")
-      .readFileSync(path.resolve(__dirname, "./key"))
-      .toString(),
-  },
-
-  // 工作目录
-  workDir: path.join(process.cwd(), "frontend-builds"),
-
-  // 是否保留临时文件（用于调试）
-  keepTempFiles: true,
-};
 
 class ProjectBuilder {
   constructor(config) {
@@ -169,78 +112,6 @@ CMD ["/start.sh"]
     return outputDir;
   }
 
-  // 上传到服务器
-  async uploadToServer(project, buildOutputPath) {
-    const { Client } = require("ssh2");
-    const client = new Client();
-
-    console.log(`🚀 Uploading ${project.name} to server...`);
-
-    return new Promise((resolve, reject) => {
-      client
-        .on("ready", () => {
-          client.sftp((err, sftp) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-
-            console.log("buildOutputPath---", buildOutputPath);
-
-            this.uploadDirectory(sftp, buildOutputPath, project.remotePath)
-              .then(() => {
-                client.end();
-                resolve();
-              })
-              .catch(reject);
-          });
-        })
-        .on("error", reject);
-
-      client.connect(this.config.server);
-    });
-  }
-
-  // 上传目录到服务器
-  async uploadDirectory(sftp, localPath, remotePath) {
-    const items = await fs.readdir(localPath);
-
-    for (const item of items) {
-      const localItemPath = path.join(localPath, item);
-      const remoteItemPath = path.join(remotePath, item).replace(/\\/g, "/");
-      const stat = await fs.stat(localItemPath);
-
-      if (stat.isDirectory()) {
-        // 递归上传目录
-        await this.ensureRemoteDirectory(sftp, remoteItemPath);
-        await this.uploadDirectory(sftp, localItemPath, remoteItemPath);
-      } else {
-        // 上传文件
-        await new Promise((resolve, reject) => {
-          sftp.fastPut(localItemPath, remoteItemPath, (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-        console.log(`  📄 Uploaded: ${remoteItemPath}`);
-      }
-    }
-  }
-
-  // 确保远程目录存在
-  async ensureRemoteDirectory(sftp, remotePath) {
-    return new Promise((resolve, reject) => {
-      sftp.mkdir(remotePath, (err) => {
-        // 忽略目录已存在的错误
-        if (err && err.code !== 4) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
-
   // 构建单个项目
   async buildProject(project) {
     try {
@@ -252,14 +123,8 @@ CMD ["/start.sh"]
       // 2. 在Docker中构建
       const buildOutputPath = await this.buildInDocker(project, projectPath);
 
-      // 3. 上传到服务器
-      //   await this.uploadToServer(project, buildOutputPath);
-
-      //   console.log(`✅ Successfully built and deployed ${project.name}`);
-      // start(buildOutputPath, project.remotePath);
-
       // 每次都创建新实例
-      const transfer = new FileTransfer(config);
+      const transfer = new FileTransfer( this.config.service);
       try {
         console.log(
           "buildOutputPath, project.remotePath---",
@@ -342,7 +207,7 @@ CMD ["/start.sh"]
 }
 
 // 主函数
-async function main() {
+async function run(configInfo) {
   // 检查Docker是否可用
   try {
     execSync("docker --version", { stdio: "ignore" });
@@ -372,10 +237,13 @@ async function main() {
 
 // 运行脚本
 if (require.main === module) {
-  main().catch((error) => {
+  run({}).catch((error) => {
     console.error("💥 Fatal error:", error);
     process.exit(1);
   });
 }
 
-module.exports = ProjectBuilder;
+module.exports ={
+  run,
+  ProjectBuilder
+} ;
